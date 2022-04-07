@@ -51,45 +51,45 @@ namespace SamePixelTool
 
         #region 模糊匹配
 
-        public static bool LikeColor(RGB left, RGB right, byte offset = 10)
+        public static bool LikeColor(RGB left, RGB right, byte threshold = 10)
         {
             var absR = Math.Abs(left.red - right.red);
             var absG = Math.Abs(left.green - right.green);
             var absB = Math.Abs(left.blue - right.blue);
 
-            return (absR <= offset && absG <= offset && absB <= offset);
+            return (absR <= threshold && absG <= threshold && absB <= threshold);
         }
 
-        public static bool LikeColor(ARGB left, ARGB right, byte offset = 10, bool discardAlpha = false)
+        public static bool LikeColor(ARGB left, ARGB right, byte threshold = 10, bool discardAlpha = false)
         {
             var absA = Math.Abs(left.alpha - right.alpha);
-            var result = LikeColor((RGB)left, (RGB)right, offset);
+            var result = LikeColor((RGB)left, (RGB)right, threshold);
 
-            return discardAlpha ? result : result && (absA <= offset);
+            return discardAlpha ? result : result && (absA <= threshold);
         }
 
-        public static bool LikeColor(RGB32 left, RGB32 right, byte offset = 10) => LikeColor(left, right, offset, true);
+        public static bool LikeColor(RGB32 left, RGB32 right, byte threshold = 10) => LikeColor(left, right, threshold, true);
 
-        public static bool LikeColor(RGB left, ARGB right, byte offset = 10) => LikeColor(left, (RGB)right, offset);
+        public static bool LikeColor(RGB left, ARGB right, byte threshold = 10) => LikeColor(left, (RGB)right, threshold);
 
-        public static bool LikeColor(RGB left, RGB32 right, byte offset = 10) => LikeColor(left, (RGB)right, offset);
+        public static bool LikeColor(RGB left, RGB32 right, byte threshold = 10) => LikeColor(left, (RGB)right, threshold);
 
-        public static bool LikeColor(ARGB left, RGB right, byte offset = 10) => LikeColor((RGB)left, right, offset);
+        public static bool LikeColor(ARGB left, RGB right, byte threshold = 10) => LikeColor((RGB)left, right, threshold);
 
-        public static bool LikeColor(ARGB left, RGB32 right, byte offset = 10) => LikeColor(left, right, offset, true);
+        public static bool LikeColor(ARGB left, RGB32 right, byte threshold = 10) => LikeColor(left, right, threshold, true);
 
-        public static bool LikeColor(RGB32 left, RGB right, byte offset = 10) => LikeColor((RGB)left, right, offset);
+        public static bool LikeColor(RGB32 left, RGB right, byte threshold = 10) => LikeColor((RGB)left, right, threshold);
 
-        public static bool LikeColor(RGB32 left, ARGB right, byte offset = 10) => LikeColor(left, right, offset, true);
+        public static bool LikeColor(RGB32 left, ARGB right, byte threshold = 10) => LikeColor(left, right, threshold, true);
 
         #endregion 模糊匹配
 
-        public abstract Bitmap NewBitMap(Bitmap leftBmp, Bitmap rightBmp);
+        public abstract Bitmap NewBitMap(Bitmap leftBmp, Bitmap rightBmp, int threshold = 10);
     }
 
     public class NewBmp<L, R> : BmpBase<L, R> where L : RGB, new() where R : RGB, new()
     {
-        public override Bitmap NewBitMap(Bitmap leftBmp, Bitmap rightBmp)
+        public override Bitmap NewBitMap(Bitmap leftBmp, Bitmap rightBmp, int threshold = 10)
         {
             try
             {

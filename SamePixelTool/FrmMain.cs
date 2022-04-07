@@ -2,6 +2,7 @@
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
+using System.Threading;
 using System.Windows.Forms;
 
 namespace SamePixelTool
@@ -35,17 +36,23 @@ namespace SamePixelTool
 
             switch (trackBar.Name)
             {
-                case "trbRed":
+                case "trbRed":  //红色调节
                     labRed.Text = trackBar.Value.ToString("000");
                     break;
 
-                case "trbGreen":
+                case "trbGreen":    //绿色调节
                     labGreen.Text = trackBar.Value.ToString("000");
                     break;
 
-                case "trbBlue":
+                case "trbBlue": //蓝色调节
                     labBlue.Text = trackBar.Value.ToString("000");
                     break;
+
+                case "trbThreshold":   //阈值调节
+                    labThreshold.Text = trackBar.Value.ToString();
+                    Properties.Settings.Default.Threshold = trackBar.Value;
+                    Properties.Settings.Default.Save();
+                    return;
             }
 
             var r = trbRed.Value;
@@ -73,6 +80,8 @@ namespace SamePixelTool
             var r = trbRed.Value = Properties.Settings.Default.Red;
             var g = trbGreen.Value = Properties.Settings.Default.Green;
             var b = trbBlue.Value = Properties.Settings.Default.Blue;
+            trbThreshold.Value = Properties.Settings.Default.Threshold;
+            txtSavePath.Text = Properties.Settings.Default.SavePath;
 
             labRed.Text = r.ToString("000");
             labGreen.Text = g.ToString("000");
@@ -94,6 +103,8 @@ namespace SamePixelTool
             if (folderBrowser.ShowDialog() == DialogResult.OK)
             {
                 txtSavePath.Text = folderBrowser.SelectedPath;
+                Properties.Settings.Default.SavePath = folderBrowser.SelectedPath;
+                Properties.Settings.Default.Save();
             }
         }
 
@@ -234,125 +245,35 @@ namespace SamePixelTool
             Properties.Settings.Default.Save();
         }
 
-        private Bitmap GetNewBmp(Bitmap leftBmp, Bitmap rightBmp)
-        {
-            Bitmap newBmp = new Bitmap(leftBmp.Width, leftBmp.Height, PixelFormat.Format32bppArgb);
-            try
-            {
-                switch (leftBmp.PixelFormat)
-                {
-                    case PixelFormat.Format24bppRgb:
-                        switch (rightBmp.PixelFormat)
-                        {
-                            case PixelFormat.Format24bppRgb:
-                                newBmp = new NewBmp<RGB, RGB>().NewBitMap(leftBmp, rightBmp);
-                                break;
-
-                            case PixelFormat.Format32bppRgb:
-                                newBmp = new NewBmp<RGB, RGB32>().NewBitMap(leftBmp, rightBmp);
-                                break;
-
-                            case PixelFormat.Format32bppArgb:
-                                newBmp = new NewBmp<RGB, ARGB>().NewBitMap(leftBmp, rightBmp);
-                                break;
-
-                            default:
-                                break;
-                        }
-                        break;
-
-                    case PixelFormat.Format32bppRgb:
-                        switch (rightBmp.PixelFormat)
-                        {
-                            case PixelFormat.Format24bppRgb:
-                                newBmp = new NewBmp<RGB32, RGB>().NewBitMap(leftBmp, rightBmp);
-                                break;
-
-                            case PixelFormat.Format32bppRgb:
-                                newBmp = new NewBmp<RGB32, RGB32>().NewBitMap(leftBmp, rightBmp);
-                                break;
-
-                            case PixelFormat.Format32bppArgb:
-                                newBmp = new NewBmp<RGB32, ARGB>().NewBitMap(leftBmp, rightBmp);
-                                break;
-
-                            default:
-                                break;
-                        }
-                        break;
-
-                    case PixelFormat.Format32bppArgb:
-                        switch (rightBmp.PixelFormat)
-                        {
-                            case PixelFormat.Format24bppRgb:
-                                newBmp = new NewBmp<ARGB, RGB>().NewBitMap(leftBmp, rightBmp);
-                                break;
-
-                            case PixelFormat.Format32bppRgb:
-                                newBmp = new NewBmp<ARGB, RGB32>().NewBitMap(leftBmp, rightBmp);
-                                break;
-
-                            case PixelFormat.Format32bppArgb:
-                                newBmp = new NewBmp<ARGB, ARGB>().NewBitMap(leftBmp, rightBmp);
-                                break;
-
-                            default:
-                                break;
-                        }
-                        break;
-
-                    default:
-                        break;
-                }
-                return newBmp;
-            }
-            catch (FormatException)
-            {
-                throw;
-            }
-        }
-
-        private void SamePixelProcessing(string leftPath, string rightPath, string savePath)
-        {
-            var leftBmp = new Bitmap(leftPath);
-            var rightBmp = new Bitmap(rightPath);
-            var fileName = Path.GetFileNameWithoutExtension(leftPath);
-
-            try
-            {
-                Bitmap newBmp = GetNewBmp(leftBmp, rightBmp);
-                newBmp.Save($@"{savePath}\{fileName}.png", ImageFormat.Png);
-            }
-            catch (FormatException)
-            {
-                throw;
-            }
-        }
-
         private void BtnProcessing_Click(object sender, EventArgs e)
         {
             if (lstLeft.Items.Count <= 0) return;
 
-            btnProcessing.Enabled = false;
+            trbThreshold.Enabled = btnProcessing.Enabled = false;
             try
             {
                 var savePath = txtSavePath.Text;
+                var threshold = trbThreshold.Value;
+                var leftCount = lstLeft.Items.Count;
+
+                toolStripProgressBar.Value = 0;
+                toolStripProgressBar.Maximum = leftCount;
+                tsLabel.Text = $"0 / {leftCount}";
+
+                //ThreadPool.SetMinThreads(1, 1);
+                ThreadPool.SetMaxThreads(10, 10);
                 for (int i = 0; i < lstLeft.Items.Count; i++)
                 {
-                    lstLeft.SelectedIndex = i;
                     if (i >= lstRight.Items.Count) return;
-                    Application.DoEvents();
-                    SamePixelProcessing(lstLeft.Items[i].ToString(), lstRight.Items[i].ToString(), savePath);
+                    //Application.DoEvents();
+                    ThreadPool.QueueUserWorkItem(TaskDo, new string[] { lstLeft.Items[i].ToString(), lstRight.Items[i].ToString(), savePath, threshold.ToString() });
+                    //SamePixelProcessing(lstLeft.Items[i].ToString(), lstRight.Items[i].ToString(), savePath, threshold);
                 }
-                MessageBox.Show("完成!");
             }
             catch (FormatException ex)
             {
                 MessageBox.Show(ex.Message, "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            finally
-            {
-                btnProcessing.Enabled = true;
+                trbThreshold.Enabled = btnProcessing.Enabled = true;
             }
         }
     }
